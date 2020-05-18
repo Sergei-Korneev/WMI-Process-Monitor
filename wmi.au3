@@ -10,14 +10,17 @@
 #include <WindowsConstants.au3>
 #include <GuiListView.au3>
 #include <ListViewConstants.au3>
+
+$refreshrate=200
+
 ;******************************************************************************
 ;~ Create Gui
 Opt("GuiOnEventMode", 1)
 $hGUI = GUICreate("A new process raised!", 420, 420)
 GUISetOnEvent($GUI_EVENT_CLOSE, "killall")
 $ListView = GUICtrlCreateListView("Check to unlock|Path|Hash", 10, 10, 400, 400, -1, BitOR($LVS_EX_CHECKBOXES,$WS_EX_CLIENTEDGE))
-;******************************************************************************
 
+;******************************************************************************
 ;~ Check if file hash exists in the file
 Func checkinfile($pattern="")
    local $file = FileOpen("./allow.txt", 0)
@@ -38,7 +41,6 @@ Func checkinfile($pattern="")
 EndFunc
 
 ;******************************************************************************
-
 ;~ Add Hash to the file
 Func fileappend($line="")
  Local $hFileOpen = FileOpen("./allow.txt", $FO_APPEND)
@@ -50,6 +52,8 @@ Func fileappend($line="")
        FileWrite($hFileOpen, $line)
 FileClose($hFileOpen)
 EndFunc
+
+
 ;******************************************************************************
 ;~ Resume Process and add to exclusions
 Func _GetChecked()
@@ -57,6 +61,7 @@ Func _GetChecked()
         _ProcessNT(StringSplit(GUICtrlRead(@GUI_CtrlId), "|")[1],  False)
      	   fileappend(StringSplit(GUICtrlRead(@GUI_CtrlId), "|")[2]&"  "&StringSplit(GUICtrlRead(@GUI_CtrlId), "|")[3]&@CRLF)
 	         GUICtrlDelete ( @GUI_CtrlId )
+			    if _GUICtrlListView_GetItemCount($ListView)==0 Then GUISetState(@SW_HIDE)
     EndIf
 EndFunc
 
@@ -66,9 +71,9 @@ Func killall()
 For $k = 0 To _GUICtrlListView_GetItemCount($ListView)
    $aItem = _GUICtrlListView_GetItemTextArray($ListView, $k)
      ProcessClose($aItem[1])
-    Next
-     _GUICtrlListView_DeleteAllItems ( $ListView )
-        GUISetState(@SW_HIDE)
+      Next
+        _GUICtrlListView_DeleteAllItems ( $ListView )
+          GUISetState(@SW_HIDE)
 EndFunc
 
 ;******************************************************************************
@@ -96,8 +101,10 @@ For $strComputer In $arrComputers
 Next
 ConsoleWrite("In monitoring mode. Press Ctrl+C to exit." & @CRLF)
 While 1
-    Sleep(100)
+    Sleep($refreshrate)
 WEnd
+
+
 ;******************************************************************************
 Func SINK_OnObjectReady($objLatestEvent, $objAsyncContext)
     ;Trap asynchronous events.
@@ -108,11 +115,14 @@ Func SINK_OnObjectReady($objLatestEvent, $objAsyncContext)
 	$path=$objLatestEvent.TargetInstance.ExecutablePath
     $path = StringReplace($path, @WindowsDir&"\system32",@WindowsDir&"\Sysnative",0,0)
 	$path = StringReplace($path,  @WindowsDir&"\SysWOW64",@WindowsDir&"\Sysnative",0,0)
-	ConsoleWrite("Executable Path: " & $path & @CRLF)
+	ConsoleWrite(" Executable Path: " & $path & @CRLF)
 	$hash=_Crypt_HashFile($path,  $CALG_MD5)
-	ConsoleWrite("MD5 Hash: " &$hash& @CRLF)
+	ConsoleWrite(" MD5 Hash: " &$hash& @CRLF)
 	ConsoleWrite(" ID : " &$objLatestEvent.TargetInstance.ProcessID & @CRLF)
-    ConsoleWrite("  Time: " & _NowDate() & @CRLF)
+	ConsoleWrite(" Description : " &$objLatestEvent.TargetInstance.Description & @CRLF)
+	ConsoleWrite(" SessionId : " &$objLatestEvent.TargetInstance.SessionId & @CRLF)
+	ConsoleWrite(" CommandLine : " &$objLatestEvent.TargetInstance.CommandLine & @CRLF)
+    ConsoleWrite(" Time: " & _NowDate() & @CRLF)
    if not checkinfile($hash) Then
 
 	GUICtrlCreateListViewItem($objLatestEvent.TargetInstance.ProcessID&  "|"&$path &" "&$objLatestEvent.TargetInstance.Name&  "|"&$hash , $ListView)
@@ -120,13 +130,17 @@ Func SINK_OnObjectReady($objLatestEvent, $objAsyncContext)
 	GUISetState()
 	_ProcessNT($objLatestEvent.TargetInstance.ProcessID,  True)
 	EndIf
-EndFunc   ;==>SINK_OnObjectReady
+ EndFunc   ;==>SINK_OnObjectReady
+
+
+
 ;******************************************************************************
 func sink_onprogress($iUpperBound,$iCurrent,$strMessage,$objWbemAsyncContext)
     ConsoleWrite("progress ... " & @crlf )
     ConsoleWrite($iUpperBound & @crlf & $iCurrent & @crlf & $strMessage & @crlf &$objWbemAsyncContext & @crlf )
  endfunc
 ;******************************************************************************
+
 Func _ProcessNT($iPID, $iSuspend = True)
     If IsString($iPID) Then $iPID = ProcessExists($iPID)
     If Not $iPID Then Return SetError(2, 0, 0)
