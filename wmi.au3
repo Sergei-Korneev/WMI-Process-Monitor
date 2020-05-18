@@ -114,8 +114,10 @@ Func SINK_OnObjectReady($objLatestEvent, $objAsyncContext)
     ConsoleWrite(@CRLF & "Computer Name: " & $objAsyncContextItem.Value & @CRLF)
     ConsoleWrite("Sink Name: " & $objAsyncContext.Item ("sinkname").Value & @CRLF)
 	$path=$objLatestEvent.TargetInstance.ExecutablePath
-    $path = StringReplace($path, @WindowsDir&"\system32",@WindowsDir&"\Sysnative",0,0)
-	$path = StringReplace($path,  @WindowsDir&"\SysWOW64",@WindowsDir&"\Sysnative",0,0)
+	if not FileExists($path) Then
+	    $path = StringReplace($path, @WindowsDir&"\system32",@WindowsDir&"\Sysnative",0,0)
+	    $path = StringReplace($path,  @WindowsDir&"\SysWOW64",@WindowsDir&"\Sysnative",0,0)
+		EndIf
 	ConsoleWrite(" Executable Path: " & $path & @CRLF)
 	$hash=_Crypt_HashFile($path,  $CALG_MD5)
 	ConsoleWrite(" MD5 Hash: " &$hash& @CRLF)
