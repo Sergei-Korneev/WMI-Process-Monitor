@@ -1,6 +1,6 @@
 ;WMI Process monitoring
 ;Sergei Korneev 2020
-
+#RequireAdmin
 #include<array.au3>
 #include<date.au3>
 #include <Crypt.au3>
@@ -12,7 +12,7 @@
 #include <ListViewConstants.au3>
 
 $refreshrate=200
-
+Opt("TrayAutoPause", 0)
 ;******************************************************************************
 ;~ Create Gui
 Opt("GuiOnEventMode", 1)
