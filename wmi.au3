@@ -13,6 +13,7 @@
 
 $refreshrate=200
 Opt("TrayAutoPause", 0)
+Opt("TrayIconHide", 1)
 ;******************************************************************************
 ;~ Create Gui
 Opt("GuiOnEventMode", 1)
