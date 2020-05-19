@@ -40,7 +40,18 @@ Func checkinfile($pattern="")
    FileClose($file)
 
 EndFunc
+;******************************************************************************
+;~ Write log
+Func logwrite($line="")
+ Local $hFileOpen = FileOpen("./log.txt", $FO_APPEND)
+    If $hFileOpen = -1 Then
+       ConsoleWrite("Cannot open the file ./log.txt.")
+        Return 1
+    EndIf
 
+       FileWrite($hFileOpen, $line)
+FileClose($hFileOpen)
+EndFunc
 ;******************************************************************************
 ;~ Add Hash to the file
 Func fileappend($line="")
@@ -117,15 +128,17 @@ Func SINK_OnObjectReady($objLatestEvent, $objAsyncContext)
 	if not FileExists($path) Then
 	    $path = StringReplace($path, @WindowsDir&"\system32",@WindowsDir&"\Sysnative",0,0)
 	    $path = StringReplace($path,  @WindowsDir&"\SysWOW64",@WindowsDir&"\Sysnative",0,0)
-		EndIf
-	ConsoleWrite(" Executable Path: " & $path & @CRLF)
+	 EndIf
 	$hash=_Crypt_HashFile($path,  $CALG_MD5)
-	ConsoleWrite(" MD5 Hash: " &$hash& @CRLF)
-	ConsoleWrite(" ID : " &$objLatestEvent.TargetInstance.ProcessID & @CRLF)
-	ConsoleWrite(" Description : " &$objLatestEvent.TargetInstance.Description & @CRLF)
-	ConsoleWrite(" SessionId : " &$objLatestEvent.TargetInstance.SessionId & @CRLF)
-	ConsoleWrite(" CommandLine : " &$objLatestEvent.TargetInstance.CommandLine & @CRLF)
-    ConsoleWrite(" Time: " & _NowDate() & @CRLF)
+	$info=" Executable Path: " & $path & @CRLF _
+	&" MD5 Hash: " &$hash& @CRLF _
+	&" ID : " &$objLatestEvent.TargetInstance.ProcessID & @CRLF _
+	&" Description : " &$objLatestEvent.TargetInstance.Description & @CRLF _
+	&" SessionId : " &$objLatestEvent.TargetInstance.SessionId & @CRLF _
+	&" CommandLine : " &$objLatestEvent.TargetInstance.CommandLine & @CRLF _
+    &" Time: " & _NowDate() & @CRLF
+	ConsoleWrite($info)
+	logwrite($info)
    if not checkinfile($hash) Then
 
 	GUICtrlCreateListViewItem($objLatestEvent.TargetInstance.ProcessID&  "|"&$path &" "&$objLatestEvent.TargetInstance.Name&  "|"&$hash , $ListView)
