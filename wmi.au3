@@ -14,6 +14,37 @@
 $refreshrate=200
 Opt("TrayAutoPause", 0)
 Opt("TrayIconHide", 1)
+$learn=0
+$timel=0
+$begin = TimerInit()
+
+;******************************************************************************
+;~ Parse command line
+If $CmdLine[0] == 2 Then
+
+   If $CmdLine[1] == "learn" and StringIsDigit($CmdLine[2]) Then
+ConsoleWrite($CmdLine[0]&$CmdLine[1])
+     $timel=$CmdLine[2]
+	 $learn=1
+   EndIf
+
+EndIf
+
+;******************************************************************************
+;~ Timer
+Func timer($begin=0,$Minutes=0)
+Local $60Count = 0
+    $dif = TimerDiff($begin)
+    $dif2 = StringLeft($dif, StringInStr($dif, ".") -1)
+    $Count = int($dif/1000)
+    $60Count = Int($Count / 60)
+	if $Minutes <= $60Count Then
+	   return 1
+	EndIf
+	ConsoleWrite($Count&@CRLF)
+	return 0
+EndFunc
+
 ;******************************************************************************
 ;~ Create Gui
 Opt("GuiOnEventMode", 1)
@@ -21,6 +52,11 @@ $hGUI = GUICreate("A new process raised!", 420, 420)
 GUISetOnEvent($GUI_EVENT_CLOSE, "killall")
 $ListView = GUICtrlCreateListView("Check to unlock|Path|Hash", 10, 10, 400, 400, -1, BitOR($LVS_EX_CHECKBOXES,$WS_EX_CLIENTEDGE))
 
+;******************************************************************************
+;~ Show help
+Func Help()
+   ConsoleWrite("WMI Process Monitor (Sergei Korneev 2020)"&@CRLF&"Use: "&@CRLF&"program.exe or program.exe learn [time in minutes]"&@CRLF&@CRLF)
+EndFunc
 ;******************************************************************************
 ;~ Check if file hash exists in the file
 Func checkinfile($pattern="")
@@ -41,37 +77,23 @@ Func checkinfile($pattern="")
 
 EndFunc
 ;******************************************************************************
-;~ Write log
-Func logwrite($line="")
- Local $hFileOpen = FileOpen("./log.txt", $FO_APPEND)
+;~ Write file
+Func file_write($line="",$file="")
+ Local $hFileOpen = FileOpen($file, $FO_APPEND)
     If $hFileOpen = -1 Then
-       ConsoleWrite("Cannot open the file ./log.txt.")
+       ConsoleWrite("Cannot open the file "&$file)
         Return 1
     EndIf
 
        FileWrite($hFileOpen, $line)
 FileClose($hFileOpen)
 EndFunc
-;******************************************************************************
-;~ Add Hash to the file
-Func fileappend($line="")
- Local $hFileOpen = FileOpen("./allow.txt", $FO_APPEND)
-    If $hFileOpen = -1 Then
-       ConsoleWrite("Cannot open the file ./allow.txt.")
-        Return 1
-    EndIf
-
-       FileWrite($hFileOpen, $line)
-FileClose($hFileOpen)
-EndFunc
-
-
 ;******************************************************************************
 ;~ Resume Process and add to exclusions
 Func _GetChecked()
     If GUICtrlRead(@GUI_CtrlId, 1) = 1 Then
         _ProcessNT(StringSplit(GUICtrlRead(@GUI_CtrlId), "|")[1],  False)
-     	   fileappend(StringSplit(GUICtrlRead(@GUI_CtrlId), "|")[2]&"  "&StringSplit(GUICtrlRead(@GUI_CtrlId), "|")[3]&@CRLF)
+     	   file_write(StringSplit(GUICtrlRead(@GUI_CtrlId), "|")[2]&"  "&StringSplit(GUICtrlRead(@GUI_CtrlId), "|")[3]&@CRLF,"./allow.txt")
 	         GUICtrlDelete ( @GUI_CtrlId )
 			    if _GUICtrlListView_GetItemCount($ListView)==0 Then GUISetState(@SW_HIDE)
     EndIf
@@ -110,8 +132,9 @@ For $strComputer In $arrComputers
         $objWMIService.ExecNotificationQueryAsync ($SINK, $strQuery, Default, Default, Default, $objContext)
         ConsoleWrite("Waiting for processes to start on " & $strComputer & " ..." & @CRLF)
     EndIf
-Next
-ConsoleWrite("In monitoring mode. Press Ctrl+C to exit." & @CRLF)
+ Next
+Help()
+ConsoleWrite("In monitoring mode. (learning mode: "&$learn&" for "&$timel&" minutes.) " &"Press Ctrl+C to exit." & @CRLF)
 While 1
     Sleep($refreshrate)
 WEnd
@@ -138,13 +161,16 @@ Func SINK_OnObjectReady($objLatestEvent, $objAsyncContext)
 	&" CommandLine : " &$objLatestEvent.TargetInstance.CommandLine & @CRLF _
     &" Time: " & _NowDate() & @CRLF
 	ConsoleWrite($info)
-	logwrite($info)
+	file_write($info,"./log.txt")
    if not checkinfile($hash) Then
-
-	GUICtrlCreateListViewItem($objLatestEvent.TargetInstance.ProcessID&  "|"&$path &" "&$objLatestEvent.TargetInstance.Name&  "|"&$hash , $ListView)
-    GUICtrlSetOnEvent(-1, "_GetChecked")
-	GUISetState()
-	_ProcessNT($objLatestEvent.TargetInstance.ProcessID,  True)
+	   if $learn==1 and not timer($begin,$timel) Then
+		  file_write($path &" "&$hash,"./allow.txt")
+       Else
+	     GUICtrlCreateListViewItem($objLatestEvent.TargetInstance.ProcessID&  "|"&$path &" "&$objLatestEvent.TargetInstance.Name&  "|"&$hash , $ListView)
+         GUICtrlSetOnEvent(-1, "_GetChecked")
+	     GUISetState()
+	     _ProcessNT($objLatestEvent.TargetInstance.ProcessID,  True)
+	   EndIf
 	EndIf
  EndFunc   ;==>SINK_OnObjectReady
 
