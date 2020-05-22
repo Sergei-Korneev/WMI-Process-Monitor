@@ -23,9 +23,8 @@ $begin = TimerInit()
 If $CmdLine[0] == 2 Then
 
    If $CmdLine[1] == "learn" and StringIsDigit($CmdLine[2]) Then
-ConsoleWrite($CmdLine[0]&$CmdLine[1])
-     $timel=$CmdLine[2]
-	 $learn=1
+      $timel=$CmdLine[2]
+    	 $learn=1
    EndIf
 
 EndIf
